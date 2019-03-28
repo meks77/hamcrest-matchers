@@ -1,3 +1,12 @@
+[![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=at.meks%3Ahamcrest-matchers&metric=alert_status)](https://sonarcloud.io/dashboard?id=at.meks%3Ahamcrest-matchers)
+[![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=at.meks%3Ahamcrest-matchers&metric=bugs)](https://sonarcloud.io/dashboard?id=at.meks%3Ahamcrest-matchers)
+[![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=at.meks%3Ahamcrest-matchers&metric=code_smells)](https://sonarcloud.io/dashboard?id=at.meks%3Ahamcrest-matchers)
+[![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=at.meks%3Ahamcrest-matchers&metric=coverage)](https://sonarcloud.io/dashboard?id=at.meks%3Ahamcrest-matchers)
+[![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=at.meks%3Ahamcrest-matchers&metric=duplicated_lines_density)](https://sonarcloud.io/dashboard?id=at.meks%3Ahamcrest-matchers)
+[![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=at.meks%3Ahamcrest-matchers&metric=sqale_rating)](https://sonarcloud.io/dashboard?id=at.meks%3Ahamcrest-matchers)
+[![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=at.meks%3Ahamcrest-matchers&metric=sqale_index)](https://sonarcloud.io/dashboard?id=at.meks%3Ahamcrest-matchers)
+[![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=at.meks%3Ahamcrest-matchers&metric=security_rating)](https://sonarcloud.io/dashboard?id=at.meks%3Ahamcrest-matchers)
+[![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=at.meks%3Ahamcrest-matchers&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=at.meks%3Ahamcrest-matchers)
 # hamcrest-matchers
 A collection of matchers for hamcrest assertions.
 Currently it's not started. But soon it will provide the possibility to assert the content of a zip file.
