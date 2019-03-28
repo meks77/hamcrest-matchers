@@ -12,6 +12,79 @@ plugins {
     id("pl.allegro.tech.build.axion-release") version "1.10.0"
     id("org.sonarqube") version "2.7"
     jacoco
+    `maven-publish`
+    signing
+}
+
+group="at.meks"
+version = scmVersion.version
+
+tasks.register<Jar>("sourcesJar") {
+    archiveClassifier.set("sources")
+    from(sourceSets.main.get().allJava)
+}
+
+tasks.register<Jar>("javadocJar") {
+    archiveClassifier.set("javadoc")
+    from(tasks.javadoc.get().destinationDir)
+}
+
+signing {
+    val signingKeyId: String by project
+    val signingPassword: String by project
+    val signingSecretKeyRingFile: String by project
+    extra["signing.keyId"] = signingKeyId
+    extra["signing.secretKeyRingFile"] = signingSecretKeyRingFile
+    extra["signing.password"] = signingPassword
+    sign(configurations.archives.get())
+}
+
+publishing {
+    repositories {
+        maven {
+            val nexusUrl: String by project
+            val releasesRepoUrl = "${nexusUrl}/service/local/staging/deploy/maven2/"
+            val snapshotsRepoUrl = "${nexusUrl}/content/repositories/snapshots/"
+            val nexusUsername: String by project
+            val nexusPassword: String by project
+            url = uri(if (version.toString().endsWith("SNAPSHOT")) snapshotsRepoUrl else releasesRepoUrl)
+            credentials {
+                username = nexusUsername
+                password = nexusPassword
+            }
+        }
+    }
+
+    publications {
+        create<MavenPublication>("hamcrest-matchers") {
+            from(components["java"])
+            artifact(tasks["sourcesJar"]).setExtension("zip")
+            artifact(tasks["javadocJar"]).setExtension("zip")
+            pom {
+                name.set("Hamcrest-Matchers")
+                description.set("a library containing hamcrest matchers")
+                url.set("https://github.com/meks77/hamcrest-matchers")
+                licenses {
+                    license {
+                        name.set("The Apache License, Version 2.0")
+                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+                developers {
+                    developer {
+                        name.set("Markus Hager")
+                        url.set("https://github.com/meks77")
+                    }
+                }
+
+                scm {
+                    connection.set("scm:git:https://github.com/meks77/hamcrest-matchers.git")
+                    developerConnection.set("scm:git:https://github.com/meks77/hamcrest-matchers.git")
+                    url.set("https://github.com/meks77/hamcrest-matchers")
+                }
+            }
+        }
+    }
 }
 
 tasks.jacocoTestReport {
@@ -20,8 +93,6 @@ tasks.jacocoTestReport {
         csv.isEnabled = false
     }
 }
-
-
 
 repositories {
     // Use jcenter for resolving your dependencies.
