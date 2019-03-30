@@ -20,6 +20,11 @@ public class ZipFileMatcher extends TypeSafeMatcher<Path> {
         this.expectedContent = expectedContent;
     }
 
+    /**
+     * compares the content of 2 zip files. The name, content, size and last modification date is compared.
+     * @param expected  the path to the zip file with the expected content
+     * @return a configured instance of the matcher for the assertion
+     */
     public static ZipFileMatcher matchesWithNameLastModifiedAndContent(Path expected) {
         return new ZipFileMatcher(expected);
     }
