@@ -56,7 +56,6 @@ final class ZipFileComparator {
 
     private boolean isDataMatching(boolean directory, ComparedEntryData actualData, ComparedEntryData expectedData) {
         return Objects.equals(actualData.getSize(), expectedData.getSize()) &&
-                Objects.equals(actualData.getName(), expectedData.getName()) &&
                 Objects.equals(actualData.getHashOfFileContent(), expectedData.getHashOfFileContent()) &&
                 ((directory && ignoreLastModifiedDateOnDirectories) || isLastModifiedWithinAllowedDiff(actualData, expectedData));
     }
