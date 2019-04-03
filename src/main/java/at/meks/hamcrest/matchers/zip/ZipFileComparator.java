@@ -3,13 +3,21 @@ package at.meks.hamcrest.matchers.zip;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 final class ZipFileComparator {
+
+    private boolean ignoreLastModifiedDateOnDirectories;
+    private TimeUnit ignoreLastModifiedDiffUnit;
+    private int ignoreLastModifiedDiffCount;
 
     ZipCompareResult assertZipEquals(Path actual, Path expected) throws IOException  {
         ZipFile actualZipFile = new ZipFile(actual.toFile());
@@ -23,13 +31,13 @@ final class ZipFileComparator {
 
     private ZipCompareResult getDiff(ZipFileDescriptor actualZip, ZipFileDescriptor expectedZip) throws IOException {
         ZipCompareResult result = new ZipCompareResult();
-        actualZip.entries.values().stream()
-                .filter(entry -> !expectedZip.entries.containsKey(entry.getName()))
-                .map(this::toNotExpectedResult)
+        actualZip.entries.entrySet().stream()
+                .filter(entry -> !expectedZip.entries.containsKey(entry.getKey()))
+                .map(entry -> toNotExpectedResult(entry.getValue()))
                 .forEach(result::addEntryResult);
-        expectedZip.entries.values().stream()
-                .filter(entry -> !actualZip.entries.containsKey(entry.getName()))
-                .map(this::toMissingResult)
+        expectedZip.entries.entrySet().stream()
+                .filter(entry -> !actualZip.entries.containsKey(entry.getKey()))
+                .map(entry -> toMissingResult(entry.getValue()))
                 .forEach(result::addEntryResult);
 
 
@@ -39,11 +47,30 @@ final class ZipFileComparator {
 
             ComparedEntryData actualData = toComparedData(actualEntry, getHashOfContent(actualZip, key));
             ComparedEntryData expectedData = toComparedData(expectedEntry, getHashOfContent(expectedZip, key));
-            if (!actualData.equals(expectedData)) {
+            if (!isDataMatching(actualEntry.isDirectory(), actualData, expectedData)) {
                 result.addEntryResult(new EntryCompareResult(actualData, expectedData));
             }
         }
         return result;
+    }
+
+    private boolean isDataMatching(boolean directory, ComparedEntryData actualData, ComparedEntryData expectedData) {
+        return Objects.equals(actualData.getSize(), expectedData.getSize()) &&
+                Objects.equals(actualData.getName(), expectedData.getName()) &&
+                Objects.equals(actualData.getHashOfFileContent(), expectedData.getHashOfFileContent()) &&
+                ((directory && ignoreLastModifiedDateOnDirectories) || isLastModifiedWithinAllowedDiff(actualData, expectedData));
+    }
+
+    private boolean isLastModifiedWithinAllowedDiff(ComparedEntryData actualData, ComparedEntryData expectedData) {
+        long timeLastModifiedActual = actualData.getLastModifiedDate().toEpochSecond(ZoneOffset.UTC);
+        long timeLastModifiedExpected = expectedData.getLastModifiedDate().toEpochSecond(ZoneOffset.UTC);
+        long diffLastModifiedSeconds = Math.abs(timeLastModifiedActual - timeLastModifiedExpected);
+        if (diffLastModifiedSeconds == 0) {
+            return true;
+        } else if (ignoreLastModifiedDiffUnit != null) {
+            return diffLastModifiedSeconds <= ignoreLastModifiedDiffUnit.toSeconds(ignoreLastModifiedDiffCount);
+        }
+        return false;
     }
 
     private int getHashOfContent(ZipFileDescriptor actualZip, String key) throws IOException {
@@ -59,11 +86,15 @@ final class ZipFileComparator {
     }
 
     private ComparedEntryData toComparedDataWithoutHash(ZipEntry entry) {
-        return ComparedEntryData.aComparedEntryData()
-                .withName(entry.getName())
+        ComparedEntryData.ComparedEntryDataBuilder builder = ComparedEntryData.aComparedEntryData()
+                .withName(toOsDirSeparator(entry))
                 .withSize(entry.getSize())
-                .withLastModifiedDate(Date.from(entry.getLastModifiedTime().toInstant()))
-                .build();
+                .withLastModifiedDate(Date.from(entry.getLastModifiedTime().toInstant()));
+        return builder.build();
+    }
+
+    private String toOsDirSeparator(ZipEntry entry) {
+        return Paths.get(entry.getName()).toString();
     }
 
     private ComparedEntryData toComparedData(ZipEntry entry, int contentHash) {
@@ -84,5 +115,12 @@ final class ZipFileComparator {
     }
 
 
+    void setIgnoreLastModifiedDateOnDirectories(boolean ignore) {
+        ignoreLastModifiedDateOnDirectories = ignore;
+    }
 
+    void setIgnoreLastModifiedDifference(TimeUnit unit, int count) {
+        ignoreLastModifiedDiffUnit = unit;
+        ignoreLastModifiedDiffCount = count;
+    }
 }

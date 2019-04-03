@@ -1,5 +1,6 @@
 package at.meks.hamcrest.matchers.zip;
 
+import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 import io.cucumber.datatable.DataTable;
@@ -9,13 +10,13 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static java.util.Optional.ofNullable;
@@ -26,6 +27,15 @@ public class ZipFileComparatorSteps {
     private ZipFileComparator zipFileComparator = new ZipFileComparator();
     private ZipCompareResult compareResult;
 
+    @Given("directories last modified date is not compared")
+    public void setDirecotriesLastModifiedDateIsIgnored() {
+        zipFileComparator.setIgnoreLastModifiedDateOnDirectories(true);
+    }
+
+    @Given("the last modified diff can differ up to 2 seconds")
+    public void setAllowedLastModifiedDiffTo2Seconds() {
+        zipFileComparator.setIgnoreLastModifiedDifference(TimeUnit.SECONDS, 2);
+    }
 
     @When("(.*).zip is compared to (.*).zip")
     public void compareFiles(String actualFileName, String expectedFileName) throws URISyntaxException, IOException {
@@ -47,7 +57,8 @@ public class ZipFileComparatorSteps {
     public void verifyAssertionsResulTo(DataTable dataTable){
         assertThat(compareResult).as("compare result").isNotNull();
         assertThat(compareResult.hasDiffs()).as("has diffs").isTrue();
-        dataTable.unorderedDiff(DataTable.create(compareResult.getEntryDiffs().stream()
+        DataTable expectedDataTable = getDataTableWithOsPathSeparators(dataTable);
+        expectedDataTable.unorderedDiff(DataTable.create(compareResult.getEntryDiffs().stream()
                 .filter(entryCompareResult -> entryCompareResult.getActual() == null)
                 .map(EntryCompareResult::getExpected)
                 .map(ComparedEntryData::getName)
@@ -55,11 +66,41 @@ public class ZipFileComparatorSteps {
                 .collect(Collectors.toList())));
     }
 
+    private DataTable getDataTableWithOsPathSeparators(DataTable dataTable) {
+        List<List<String>> rows = new ArrayList<>();
+        List<List<String>> origRows = dataTable.asLists();
+        origRows.stream()
+                .map(origRow -> origRow.get(0))
+                .map(this::convertPathToOsPath)
+                .forEach(fileName -> rows.add(Collections.singletonList(fileName)));
+        return DataTable.create(rows);
+    }
+
+    private String convertPathToOsPath(String fileName) {
+        return Paths.get(fileName).toString();
+    }
+
+    @Then("the result contains no missing files")
+    public void verifyResultHasNoMissingFiles() {
+        assertThat(compareResult.getEntryDiffs().stream()
+                .filter(diff -> diff.getActual() == null)
+                .collect(Collectors.toList()))
+                .isEmpty();
+    }
+
+    @Then("the result contains no additional files")
+    public void verifyResultHasNoAdditionalFiles() {
+        assertThat(compareResult.getEntryDiffs().stream()
+                .filter(diff -> diff.getExpected() == null)
+                .collect(Collectors.toList())).isEmpty();
+    }
+
     @Then("the result contains the following files which shouldn't exist:")
     public void verifyNotExpectedFilesTo(DataTable dataTable) {
         assertThat(compareResult).as("compare result").isNotNull();
         assertThat(compareResult.hasDiffs()).as("has diffs").isTrue();
-        dataTable.unorderedDiff(DataTable.create(compareResult.getEntryDiffs().stream()
+        DataTable expectedDataTable = getDataTableWithOsPathSeparators(dataTable);
+        expectedDataTable.unorderedDiff(DataTable.create(compareResult.getEntryDiffs().stream()
                 .filter(entryCompareResult -> entryCompareResult.getExpected() == null)
                 .map(EntryCompareResult::getActual)
                 .map(ComparedEntryData::getName)
@@ -78,7 +119,31 @@ public class ZipFileComparatorSteps {
                 .filter(entryCompareResult -> entryCompareResult.getActual() != null)
                 .map(this::toDataTableRow)
                 .collect(Collectors.toList()));
-        dataTable.unorderedDiff(DataTable.create(actualDataTable));
+        DataTable expectedDataTable = convertMultiColumnTableToTableWithOsPathSeparators(dataTable);
+        expectedDataTable.unorderedDiff(DataTable.create(actualDataTable));
+    }
+
+    private DataTable convertMultiColumnTableToTableWithOsPathSeparators(DataTable dataTable) {
+        List<List<String>> dataLists = dataTable.asLists();
+        List<String> headers = dataLists.get(0);
+        int fileNameCol = headers.indexOf("name");
+        List<List<String>> data = dataLists.subList(1, dataLists.size());
+
+        List<List<String>> convertedList = new ArrayList<>(dataLists.size());
+        convertedList.add(headers);
+
+        data.forEach(rowValues -> {
+            List<String> convertedValues = new ArrayList<>(rowValues.size());
+            for (int i=0; i < rowValues.size(); i++) {
+                if (i == fileNameCol) {
+                    convertedValues.add(convertPathToOsPath(rowValues.get(i)));
+                } else {
+                    convertedValues.add(rowValues.get(i));
+                }
+            }
+            convertedList.add(convertedValues);
+        });
+        return DataTable.create(convertedList);
     }
 
     private List<String> toDataTableRow(EntryCompareResult entryCompareResult) {
@@ -90,6 +155,7 @@ public class ZipFileComparatorSteps {
                 .map(ComparedEntryData::getName)
                 .orElse(ofNullable(actual)
                         .map(ComparedEntryData::getName)
+                        .map(this::convertPathToOsPath)
                         .orElse("name null")));
         dataTableRow.add(getLastModified(actual));
         dataTableRow.add(getLastModified(expected));

@@ -1,5 +1,6 @@
 package at.meks.hamcrest.matchers.zip;
 
+import java.nio.file.Paths;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,7 +21,7 @@ class ZipFileDescriptor {
         Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
         while (zipEntries.hasMoreElements()) {
             ZipEntry entry = zipEntries.nextElement();
-            entries.put(entry.getName(), entry);
+            entries.put(Paths.get(entry.getName()).toString(), entry);
         }
     }
 

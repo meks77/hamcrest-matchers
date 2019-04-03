@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
-import java.util.Objects;
 import java.util.StringJoiner;
 
 import static java.time.LocalDateTime.ofInstant;
@@ -35,24 +34,6 @@ class ComparedEntryData {
 
     LocalDateTime getLastModifiedDate() {
         return lastModifiedDate;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ComparedEntryData that = (ComparedEntryData) o;
-        return Objects.equals(size, that.size) &&
-                Objects.equals(name, that.name) &&
-                Objects.equals(hashOfFileContent, that.hashOfFileContent) &&
-                Objects.equals(lastModifiedDate, that.lastModifiedDate);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(getClass().getName(), name, hashOfFileContent, size, lastModifiedDate);
     }
 
     @Override

@@ -6,8 +6,11 @@ import org.hamcrest.TypeSafeMatcher;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
-import java.util.Objects;
+import java.util.Comparator;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static java.util.Optional.ofNullable;
 
 public class ZipFileMatcher extends TypeSafeMatcher<Path> {
 
@@ -29,6 +32,16 @@ public class ZipFileMatcher extends TypeSafeMatcher<Path> {
         return new ZipFileMatcher(expected);
     }
 
+    public ZipFileMatcher ignoreLastModifiedDateOnDirectories(boolean ignore) {
+        zipFileComparator.setIgnoreLastModifiedDateOnDirectories(ignore);
+        return this;
+    }
+
+    public ZipFileMatcher ignoreLastModifiedDifference(TimeUnit unit, int count) {
+        zipFileComparator.setIgnoreLastModifiedDifference(unit, count);
+        return this;
+    }
+
     @Override
     protected boolean matchesSafely(Path item) {
         try {
@@ -42,14 +55,7 @@ public class ZipFileMatcher extends TypeSafeMatcher<Path> {
 
     @Override
     public void describeTo(Description description) {
-        if (occuredException == null) {
-            description.appendText(
-                    result.getEntryDiffs().stream()
-                            .map(EntryCompareResult::getExpected)
-                            .filter(Objects::nonNull)
-                            .map(ComparedEntryData::toString)
-                            .collect(Collectors.joining("\n")));
-        }
+        description.appendText("the content of the zips are equal by filenames, size, last modified and content");
     }
 
     @Override
@@ -60,11 +66,24 @@ public class ZipFileMatcher extends TypeSafeMatcher<Path> {
                     .appendText(getStackTrace(occuredException));
         } else {
             mismatchDescription.appendText(result.getEntryDiffs().stream()
-                    .map(EntryCompareResult::getActual)
-                    .filter(Objects::nonNull)
-                    .map(ComparedEntryData::toString)
+                    .sorted(Comparator.comparing(diff -> ofNullable(diff.getExpected())
+                            .orElse(diff.getActual()).getName()))
+                    .map(this::toCompareDiff)
                     .collect(Collectors.joining("\n")));
         }
+    }
+
+    private String toCompareDiff(EntryCompareResult compareResult) {
+        StringBuilder diffText = new StringBuilder();
+        if (compareResult.getActual() == null) {
+            diffText.append("(-) ").append(compareResult.getExpected());
+        } else if (compareResult.getExpected() == null) {
+            diffText.append("(+) ").append(compareResult.getActual());
+        } else {
+            diffText.append("(-) ").append(compareResult.getExpected()).append("\n");
+            diffText.append("(+) ").append(compareResult.getActual());
+        }
+        return diffText.toString();
     }
 
     private String getStackTrace(Exception occuredException) {
